@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Cambiar Clave – Gestión de Actas{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Cambiar Contraseña</h1>
+    <a href="{{ url_for('lista_usuarios') }}" class="btn btn-outline">&#8592; Volver</a>
+</div>
+
+<div class="card" style="max-width:420px;">
+    <p style="margin-bottom:1.2rem;">
+        Cambiando contraseña del usuario: <strong>{{ user.nombre }}</strong>
+        (<code>{{ user.username }}</code>)
+    </p>
+    <form method="post">
+        <div class="form-group">
+            <label for="password">Nueva contraseña</label>
+            <input type="password" id="password" name="password" required
+                   placeholder="Mínimo 4 caracteres" autocomplete="new-password">
+        </div>
+        <div style="display:flex; gap:.75rem;">
+            <button type="submit" class="btn btn-primary">Actualizar</button>
+            <a href="{{ url_for('lista_usuarios') }}" class="btn btn-outline">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

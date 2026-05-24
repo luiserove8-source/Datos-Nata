@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Actas – Gestión de Actas{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Actas Registradas</h1>
+    <a href="{{ url_for('nueva_acta') }}" class="btn btn-primary">+ Nueva Acta</a>
+</div>
+
+<div class="card">
+    {% if actas %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>N° Acta</th>
+                    <th>Fecha</th>
+                    <th>Descripción</th>
+                    <th>Registrado por</th>
+                    <th>Fecha de Registro</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% set ns = namespace(prev_fecha=None) %}
+            {% for a in actas %}
+                {% set tiene_alarma = ns.prev_fecha and a.fecha < ns.prev_fecha %}
+                <tr {% if tiene_alarma %}style="background:#fff7ed;"{% endif %}>
+                    <td>
+                        <span class="numero-badge">{{ a.numero }} <span class="lock">&#128274;</span></span>
+                        {% if tiene_alarma %}
+                        <span class="badge badge-alarm" title="Fecha inferior al acta anterior">&#128680; Fecha anterior</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ a.fecha }}</td>
+                    <td>{{ a.descripcion }}</td>
+                    <td>{{ a.usuario }}</td>
+                    <td style="color:var(--muted); font-size:.85rem;">{{ a.creado_en }}</td>
+                </tr>
+                {% set ns.prev_fecha = a.fecha %}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p style="color:var(--muted); font-size:.82rem; margin-top:.75rem; text-align:right;">
+        &#128274; Los números de acta están bloqueados y no pueden modificarse ni eliminarse.
+    </p>
+    {% else %}
+    <p style="color:var(--muted); text-align:center; padding:3rem;">No hay actas registradas.</p>
+    {% endif %}
+</div>
+
+{% endblock %}

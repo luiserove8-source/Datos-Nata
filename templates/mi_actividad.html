@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Mi Actividad – Gestión de Actas{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Mi Actividad</h1>
+</div>
+
+<div class="card">
+    {% if registros %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha/Hora</th>
+                    <th>Acción</th>
+                    <th>Detalle</th>
+                    <th>IP</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for r in registros %}
+            <tr {% if r.detalle and 'ALARMA' in r.detalle %}style="background:#fff7ed;"{% endif %}>
+                <td style="font-size:.85rem; color:var(--muted); white-space:nowrap;">{{ r.creado_en }}</td>
+                <td>
+                    <span class="badge
+                        {% if r.accion == 'LOGIN' %}badge-active
+                        {% elif r.accion == 'LOGOUT' %}badge-inactive
+                        {% elif r.accion == 'CREAR_ACTA' %}badge-admin
+                        {% else %}badge-usuario{% endif %}">
+                        {{ r.accion }}
+                    </span>
+                </td>
+                <td style="font-size:.88rem;">
+                    {{ r.detalle or '—' }}
+                    {% if r.detalle and 'ALARMA' in r.detalle %}
+                    <span>&#128680;</span>
+                    {% endif %}
+                </td>
+                <td style="font-size:.82rem; color:var(--muted);">{{ r.ip or '—' }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--muted); text-align:center; padding:3rem;">Sin actividad registrada.</p>
+    {% endif %}
+</div>
+
+{% endblock %}

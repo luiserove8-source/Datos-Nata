@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión – Gestión de Actas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="login-wrap">
+    <div class="login-box">
+        <div class="login-logo">
+            <h1>&#128196; Gestión de Actas</h1>
+            <p>Sistema de numeración consecutiva</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endwith %}
+
+        <form method="post">
+            <div class="form-group">
+                <label for="username">Usuario</label>
+                <input type="text" id="username" name="username" required autofocus placeholder="Ingrese su usuario">
+            </div>
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" name="password" required placeholder="Ingrese su contraseña">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:.7rem;">
+                Ingresar
+            </button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Nueva Acta – Gestión de Actas{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Nueva Acta</h1>
+    <a href="{{ url_for('lista_actas') }}" class="btn btn-outline">&#8592; Volver</a>
+</div>
+
+<div class="card" style="max-width:600px;">
+
+    <!-- Número bloqueado asignado -->
+    <div style="margin-bottom:1.5rem;">
+        <div class="card-title">Número que se asignará (bloqueado)</div>
+        <div style="margin-top:.5rem;">
+            <span class="numero-badge" style="font-size:1.4rem; padding:.6rem 1.4rem;">
+                {{ proximo_numero }} <span class="lock">&#128274;</span>
+            </span>
+        </div>
+        <p class="form-hint" style="margin-top:.5rem;">
+            Este número es consecutivo automático e irrevocable.
+        </p>
+    </div>
+
+    {% if ultimo %}
+    <div style="margin-bottom:1.2rem; background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:.75rem 1rem; font-size:.9rem; color:#0c4a6e;">
+        &#8505; Última acta registrada: <strong>#{{ ultimo.numero }}</strong> con fecha <strong>{{ ultimo.fecha }}</strong>.
+        La fecha que seleccione debe ser igual o posterior para evitar alarmas.
+    </div>
+    {% endif %}
+
+    <form method="post" id="form-acta">
+        <div class="form-group">
+            <label for="fecha">Fecha del Acta</label>
+            <input type="date" id="fecha" name="fecha" required
+                   value="{{ request.form.get('fecha', '') }}"
+                   onchange="verificarFecha(this.value)">
+            <div class="form-hint">Seleccione la fecha correspondiente al acta.</div>
+        </div>
+
+        <!-- Alarm preview (JS live) -->
+        <div id="alarm-preview" class="alarm-box" style="display:none;">
+            <div class="alarm-icon">&#128680;</div>
+            <div class="alarm-text">
+                <strong>ALARMA – Fecha hacia atrás</strong>
+                <span id="alarm-msg"></span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="descripcion">Descripción del Acta</label>
+            <textarea id="descripcion" name="descripcion" required
+                      placeholder="Escriba aquí el asunto o descripción del acta...">{{ request.form.get('descripcion', '') }}</textarea>
+        </div>
+
+        <div style="display:flex; gap:.75rem; flex-wrap:wrap;">
+            <button type="submit" class="btn btn-success">&#128190; Guardar Acta #{{ proximo_numero }}</button>
+            <a href="{{ url_for('lista_actas') }}" class="btn btn-outline">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<script>
+const ultimaFecha = "{{ ultimo.fecha if ultimo else '' }}";
+const ultimoNumero = "{{ ultimo.numero if ultimo else '' }}";
+
+function verificarFecha(val) {
+    const preview = document.getElementById('alarm-preview');
+    const msg = document.getElementById('alarm-msg');
+    if (!ultimaFecha || !val) { preview.style.display = 'none'; return; }
+    if (val < ultimaFecha) {
+        msg.textContent =
+            `La fecha seleccionada (${val}) es ANTERIOR a la fecha del último número consecutivo `
+            + `#${ultimoNumero} (${ultimaFecha}). El acta quedará registrada pero se advierte el desfase.`;
+        preview.style.display = 'flex';
+    } else {
+        preview.style.display = 'none';
+    }
+}
+
+// Run on load if there's a prefilled value
+window.addEventListener('DOMContentLoaded', () => {
+    const f = document.getElementById('fecha');
+    if (f.value) verificarFecha(f.value);
+});
+</script>
+
+{% endblock %}
