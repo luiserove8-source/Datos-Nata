@@ -1,0 +1,19 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "actas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "numeroConsecutivo", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "auditoria",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
