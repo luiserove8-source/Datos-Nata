@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { ref, query, orderByChild, equalTo, get } from 'firebase/database';
 import { auth, db } from '../firebase';
 import { useAudit } from '../hooks/useAudit';
 
@@ -19,17 +19,26 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Buscar email por username en Firestore
-      const q = query(collection(db, 'usuarios'), where('username', '==', username.trim()));
-      const snap = await getDocs(q);
+      const q = query(
+        ref(db, 'usuarios'),
+        orderByChild('username'),
+        equalTo(username.trim())
+      );
+      const snap = await get(q);
 
-      if (snap.empty) {
+      if (!snap.exists()) {
         setError('Usuario o contraseña incorrectos.');
         setLoading(false);
         return;
       }
 
-      const perfil = snap.docs[0].data();
+      let perfil = null;
+      let uid = null;
+      snap.forEach((child) => {
+        perfil = child.val();
+        uid = child.key;
+      });
+
       if (perfil.activo === false) {
         setError('Tu cuenta está desactivada. Contacta al administrador.');
         setLoading(false);
@@ -37,7 +46,7 @@ export default function Login() {
       }
 
       await signInWithEmailAndPassword(auth, perfil.email, password);
-      await registrar(snap.docs[0].id, username.trim(), 'LOGIN', 'Inicio de sesión');
+      await registrar(uid, username.trim(), 'LOGIN', 'Inicio de sesión');
       navigate('/dashboard');
     } catch {
       setError('Usuario o contraseña incorrectos.');

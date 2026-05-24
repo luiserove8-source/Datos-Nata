@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { ref, query, orderByChild, limitToLast, onValue } from 'firebase/database';
 import { db } from '../firebase';
 
 const ACCIONES_COLOR = {
@@ -8,7 +8,6 @@ const ACCIONES_COLOR = {
   CREAR_ACTA: 'primary',
   CREAR_USUARIO: 'info',
   TOGGLE_USUARIO: 'warning',
-  CAMBIAR_CLAVE: 'warning',
 };
 
 const ACCIONES_ICON = {
@@ -17,7 +16,6 @@ const ACCIONES_ICON = {
   CREAR_ACTA: 'bi-file-earmark-plus',
   CREAR_USUARIO: 'bi-person-plus',
   TOGGLE_USUARIO: 'bi-toggle-on',
-  CAMBIAR_CLAVE: 'bi-key',
 };
 
 export default function AdminAuditoria() {
@@ -27,9 +25,11 @@ export default function AdminAuditoria() {
   const [filtroUser, setFiltroUser] = useState('');
 
   useEffect(() => {
-    const q = query(collection(db, 'auditoria'), orderBy('timestamp', 'desc'), limit(500));
-    const unsub = onSnapshot(q, (snap) => {
-      setLogs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    const q = query(ref(db, 'auditoria'), orderByChild('timestamp'), limitToLast(500));
+    const unsub = onValue(q, (snap) => {
+      const items = [];
+      snap.forEach((child) => items.push({ id: child.key, ...child.val() }));
+      setLogs(items.reverse());
       setLoading(false);
     });
     return unsub;
@@ -37,10 +37,9 @@ export default function AdminAuditoria() {
 
   const formatTs = (ts) => {
     if (!ts) return '—';
-    const d = ts.toDate ? ts.toDate() : new Date(ts);
-    return d.toLocaleString('es-CO', {
+    return new Date(ts).toLocaleString('es-CO', {
       day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', second: '2-digit'
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
     });
   };
 
@@ -58,7 +57,6 @@ export default function AdminAuditoria() {
         <i className="bi bi-shield-check me-2 text-primary"></i>Registro de Auditoría
       </h4>
 
-      {/* Filtros */}
       <div className="card border-0 shadow-sm mb-3">
         <div className="card-body py-2">
           <div className="row g-2 align-items-center">

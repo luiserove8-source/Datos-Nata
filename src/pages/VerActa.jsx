@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
+import { ref, get } from 'firebase/database';
 import { db } from '../firebase';
 
 export default function VerActa() {
@@ -11,8 +11,8 @@ export default function VerActa() {
 
   useEffect(() => {
     const cargar = async () => {
-      const snap = await getDoc(doc(db, 'actas', id));
-      if (snap.exists()) setActa({ id: snap.id, ...snap.data() });
+      const snap = await get(ref(db, `actas/${id}`));
+      if (snap.exists()) setActa({ id: snap.key, ...snap.val() });
       setLoading(false);
     };
     cargar();
@@ -20,18 +20,18 @@ export default function VerActa() {
 
   const formatFecha = (fecha) => {
     if (!fecha) return '—';
-    const d = fecha.toDate ? fecha.toDate() : new Date(fecha);
-    return d.toLocaleDateString('es-CO', {
-      weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
+    const [y, m, d] = fecha.split('-');
+    const date = new Date(+y, +m - 1, +d);
+    return date.toLocaleDateString('es-CO', {
+      weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
     });
   };
 
-  const formatTimestamp = (ts) => {
+  const formatTs = (ts) => {
     if (!ts) return '—';
-    const d = ts.toDate ? ts.toDate() : new Date(ts);
-    return d.toLocaleString('es-CO', {
+    return new Date(ts).toLocaleString('es-CO', {
       day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit'
+      hour: '2-digit', minute: '2-digit',
     });
   };
 
@@ -72,11 +72,9 @@ export default function VerActa() {
                   <div className="small opacity-75">Documento oficial</div>
                 </div>
               </div>
-              {acta.bloqueada && (
-                <span className="badge bg-danger fs-6">
-                  <i className="bi bi-lock-fill me-1"></i>Bloqueada
-                </span>
-              )}
+              <span className="badge bg-danger fs-6">
+                <i className="bi bi-lock-fill me-1"></i>Bloqueada
+              </span>
             </div>
             <div className="card-body p-4">
               <div className="row g-3">
@@ -97,18 +95,14 @@ export default function VerActa() {
                 </div>
                 <div className="col-sm-6">
                   <label className="text-muted small fw-semibold text-uppercase">Fecha de Registro</label>
-                  <p className="mt-1">{formatTimestamp(acta.creadoEn)}</p>
+                  <p className="mt-1">{formatTs(acta.creadoEn)}</p>
                 </div>
                 <div className="col-sm-6">
                   <label className="text-muted small fw-semibold text-uppercase">Estado</label>
                   <p className="mt-1">
-                    {acta.bloqueada ? (
-                      <span className="badge bg-danger p-2">
-                        <i className="bi bi-lock-fill me-1"></i>Bloqueada — No editable
-                      </span>
-                    ) : (
-                      <span className="badge bg-success p-2">Activa</span>
-                    )}
+                    <span className="badge bg-danger p-2">
+                      <i className="bi bi-lock-fill me-1"></i>Bloqueada — No editable
+                    </span>
                   </p>
                 </div>
               </div>

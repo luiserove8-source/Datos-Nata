@@ -1,8 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-  collection, onSnapshot, orderBy, query,
-  doc, updateDoc, addDoc, serverTimestamp
-} from 'firebase/firestore';
+import { ref, onValue, update, set, orderByChild, query } from 'firebase/database';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
@@ -23,13 +20,13 @@ function ModalNuevoUsuario({ onClose, onCreado }) {
     setGuardando(true);
     try {
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-      await addDoc(collection(db, 'usuarios'), {
+      await set(ref(db, `usuarios/${cred.user.uid}`), {
         uid: cred.user.uid,
         username: username.trim(),
         email: email.trim().toLowerCase(),
         isAdmin,
         activo: true,
-        creadoEn: serverTimestamp(),
+        creadoEn: Date.now(),
       });
       onCreado(username.trim());
     } catch (err) {
@@ -85,68 +82,19 @@ function ModalNuevoUsuario({ onClose, onCreado }) {
   );
 }
 
-function ModalCambioClave({ usuario, onClose, onCambiado }) {
-  const [clave, setClave] = useState('');
-  const [error, setError] = useState('');
-  const [guardando, setGuardando] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (clave.length < 6) { setError('Mínimo 6 caracteres.'); return; }
-    setGuardando(true);
-    try {
-      // Firebase Admin SDK se necesitaría para cambiar contraseña de otro usuario.
-      // Aquí registramos la solicitud; en producción usar Cloud Function.
-      alert('Para cambiar la clave de otro usuario se requiere Firebase Admin SDK (Cloud Function). Implementar en backend.');
-      onCambiado();
-    } catch {
-      setError('Error al cambiar contraseña.');
-    }
-    setGuardando(false);
-  };
-
-  return (
-    <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog">
-        <div className="modal-content border-0 shadow">
-          <div className="modal-header bg-warning">
-            <h5 className="modal-title"><i className="bi bi-key me-2"></i>Cambiar Clave — {usuario.username}</h5>
-            <button type="button" className="btn-close" onClick={onClose}></button>
-          </div>
-          <form onSubmit={handleSubmit}>
-            <div className="modal-body">
-              {error && <div className="alert alert-danger">{error}</div>}
-              <div className="mb-3">
-                <label className="form-label fw-semibold">Nueva contraseña</label>
-                <input type="password" className="form-control" value={clave}
-                  onChange={(e) => setClave(e.target.value)} required minLength={6} />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
-              <button type="submit" className="btn btn-warning" disabled={guardando}>
-                {guardando ? 'Cambiando...' : 'Cambiar'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function AdminUsuarios() {
   const { currentUser, userProfile } = useAuth();
   const { registrar } = useAudit();
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalNuevo, setModalNuevo] = useState(false);
-  const [modalClave, setModalClave] = useState(null);
 
   useEffect(() => {
-    const q = query(collection(db, 'usuarios'), orderBy('creadoEn', 'desc'));
-    const unsub = onSnapshot(q, (snap) => {
-      setUsuarios(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    const q = query(ref(db, 'usuarios'), orderByChild('creadoEn'));
+    const unsub = onValue(q, (snap) => {
+      const items = [];
+      snap.forEach((child) => items.push({ id: child.key, ...child.val() }));
+      setUsuarios(items.reverse());
       setLoading(false);
     });
     return unsub;
@@ -157,8 +105,7 @@ export default function AdminUsuarios() {
       alert('No puedes desactivarte a ti mismo.');
       return;
     }
-    const ref = doc(db, 'usuarios', user.id);
-    await updateDoc(ref, { activo: !user.activo });
+    await update(ref(db, `usuarios/${user.id}`), { activo: !user.activo });
     const estado = !user.activo ? 'activado' : 'desactivado';
     await registrar(currentUser.uid, userProfile?.username, 'TOGGLE_USUARIO',
       `Usuario "${user.username}" ${estado}`);
@@ -217,7 +164,7 @@ export default function AdminUsuarios() {
                       )}
                     </td>
                     <td>
-                      {u.activo ? (
+                      {u.activo !== false ? (
                         <span className="badge bg-success">
                           <i className="bi bi-check-circle me-1"></i>Activo
                         </span>
@@ -228,25 +175,17 @@ export default function AdminUsuarios() {
                       )}
                     </td>
                     <td className="text-end pe-3">
-                      <div className="d-flex gap-2 justify-content-end">
-                        <button
-                          className={`btn btn-sm ${u.activo ? 'btn-outline-danger' : 'btn-outline-success'}`}
-                          onClick={() => toggleActivo(u)}
-                          disabled={u.uid === currentUser.uid}
-                        >
-                          {u.activo ? (
-                            <><i className="bi bi-ban me-1"></i>Desactivar</>
-                          ) : (
-                            <><i className="bi bi-check me-1"></i>Activar</>
-                          )}
-                        </button>
-                        <button
-                          className="btn btn-sm btn-outline-warning"
-                          onClick={() => setModalClave(u)}
-                        >
-                          <i className="bi bi-key me-1"></i>Clave
-                        </button>
-                      </div>
+                      <button
+                        className={`btn btn-sm ${u.activo !== false ? 'btn-outline-danger' : 'btn-outline-success'}`}
+                        onClick={() => toggleActivo(u)}
+                        disabled={u.uid === currentUser.uid}
+                      >
+                        {u.activo !== false ? (
+                          <><i className="bi bi-ban me-1"></i>Desactivar</>
+                        ) : (
+                          <><i className="bi bi-check me-1"></i>Activar</>
+                        )}
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -260,13 +199,6 @@ export default function AdminUsuarios() {
         <ModalNuevoUsuario
           onClose={() => setModalNuevo(false)}
           onCreado={handleCreado}
-        />
-      )}
-      {modalClave && (
-        <ModalCambioClave
-          usuario={modalClave}
-          onClose={() => setModalClave(null)}
-          onCambiado={() => setModalClave(null)}
         />
       )}
     </div>

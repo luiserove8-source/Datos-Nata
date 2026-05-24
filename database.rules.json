@@ -1,0 +1,29 @@
+{
+  "rules": {
+    "usuarios": {
+      ".indexOn": ["username", "email", "creadoEn"],
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && (root.child('usuarios').child(auth.uid).child('isAdmin').val() == true || auth.uid == $uid)"
+      }
+    },
+    "actas": {
+      ".indexOn": ["numeroConsecutivo", "creadoEn"],
+      ".read": "auth != null",
+      "$actaId": {
+        ".write": "auth != null && !data.exists()"
+      }
+    },
+    "contadores": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "auditoria": {
+      ".indexOn": ["timestamp"],
+      ".read": "auth != null && root.child('usuarios').child(auth.uid).child('isAdmin').val() == true",
+      "$logId": {
+        ".write": "auth != null && !data.exists()"
+      }
+    }
+  }
+}

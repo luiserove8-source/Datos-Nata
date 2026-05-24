@@ -1,10 +1,10 @@
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, push, serverTimestamp } from 'firebase/database';
 import { db } from '../firebase';
 
 export function useAudit() {
   const registrar = async (userId, username, accion, detalle = '') => {
     try {
-      await addDoc(collection(db, 'auditoria'), {
+      await push(ref(db, 'auditoria'), {
         userId,
         username,
         accion,

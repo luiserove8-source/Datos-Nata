@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { ref, query, orderByChild, onValue } from 'firebase/database';
 import { db } from '../firebase';
-import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
-  const { userProfile } = useAuth();
   const [actas, setActas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
 
   useEffect(() => {
-    const q = query(collection(db, 'actas'), orderBy('numeroConsecutivo', 'desc'));
-    const unsub = onSnapshot(q, (snap) => {
-      setActas(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    const q = query(ref(db, 'actas'), orderByChild('numeroConsecutivo'));
+    const unsub = onValue(q, (snap) => {
+      const items = [];
+      snap.forEach((child) => items.push({ id: child.key, ...child.val() }));
+      setActas(items.reverse());
       setLoading(false);
     });
     return unsub;
@@ -33,8 +33,15 @@ export default function Dashboard() {
 
   const formatFecha = (fecha) => {
     if (!fecha) return '—';
-    const d = fecha.toDate ? fecha.toDate() : new Date(fecha);
-    return d.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const [y, m, d] = fecha.split('-');
+    return `${d}/${m}/${y}`;
+  };
+
+  const formatTs = (ts) => {
+    if (!ts) return '—';
+    return new Date(ts).toLocaleDateString('es-CO', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+    });
   };
 
   return (
@@ -119,6 +126,7 @@ export default function Dashboard() {
                   <th>Descripción</th>
                   <th>Fecha</th>
                   <th>Creado por</th>
+                  <th>Registro</th>
                   <th>Estado</th>
                   <th className="text-end pe-3">Acción</th>
                 </tr>
@@ -130,7 +138,7 @@ export default function Dashboard() {
                       <span className="badge bg-primary fs-6">#{acta.numeroConsecutivo}</span>
                     </td>
                     <td>
-                      <span className="text-truncate d-inline-block" style={{ maxWidth: 300 }}>
+                      <span className="text-truncate d-inline-block" style={{ maxWidth: 280 }}>
                         {acta.descripcion}
                       </span>
                     </td>
@@ -139,14 +147,11 @@ export default function Dashboard() {
                       <i className="bi bi-person-circle me-1 text-muted"></i>
                       {acta.creadoPor}
                     </td>
+                    <td className="text-muted small">{formatTs(acta.creadoEn)}</td>
                     <td>
-                      {acta.bloqueada ? (
-                        <span className="badge bg-danger">
-                          <i className="bi bi-lock-fill me-1"></i>Bloqueada
-                        </span>
-                      ) : (
-                        <span className="badge bg-success">Activa</span>
-                      )}
+                      <span className="badge bg-danger">
+                        <i className="bi bi-lock-fill me-1"></i>Bloqueada
+                      </span>
                     </td>
                     <td className="text-end pe-3">
                       <Link to={`/actas/${acta.id}`} className="btn btn-sm btn-outline-primary">

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { ref, get } from 'firebase/database';
 import { auth, db } from '../firebase';
 
 const AuthContext = createContext(null);
@@ -14,8 +14,8 @@ export function AuthProvider({ children }) {
     const unsub = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
-        const snap = await getDoc(doc(db, 'usuarios', user.uid));
-        setUserProfile(snap.exists() ? snap.data() : null);
+        const snap = await get(ref(db, `usuarios/${user.uid}`));
+        setUserProfile(snap.exists() ? snap.val() : null);
       } else {
         setUserProfile(null);
       }

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  collection, query, orderBy, limit, getDocs,
-  addDoc, serverTimestamp, runTransaction, doc
-} from 'firebase/firestore';
+  ref, query, orderByChild, limitToLast, get,
+  push, set, runTransaction, serverTimestamp
+} from 'firebase/database';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useAudit } from '../hooks/useAudit';
@@ -24,12 +24,14 @@ export default function NuevaActa() {
 
   useEffect(() => {
     const cargarUltima = async () => {
-      const q = query(collection(db, 'actas'), orderBy('numeroConsecutivo', 'desc'), limit(1));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const data = snap.docs[0].data();
-        setUltimaActa(data);
-        setProximoNumero(data.numeroConsecutivo + 1);
+      const q = query(ref(db, 'actas'), orderByChild('numeroConsecutivo'), limitToLast(1));
+      const snap = await get(q);
+      if (snap.exists()) {
+        snap.forEach((child) => {
+          const data = child.val();
+          setUltimaActa(data);
+          setProximoNumero(data.numeroConsecutivo + 1);
+        });
       }
       setLoadingInfo(false);
     };
@@ -42,17 +44,10 @@ export default function NuevaActa() {
     setAlerta(null);
     setMostrarConfirm(false);
 
-    if (f && ultimaActa) {
-      const fechaSeleccionada = new Date(f + 'T00:00:00');
-      const fechaUltima = ultimaActa.fecha?.toDate
-        ? ultimaActa.fecha.toDate()
-        : new Date(ultimaActa.fecha + 'T00:00:00');
-      fechaUltima.setHours(0, 0, 0, 0);
-      fechaSeleccionada.setHours(0, 0, 0, 0);
-
-      if (fechaSeleccionada < fechaUltima) {
-        const fmtSel = fechaSeleccionada.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const fmtUlt = fechaUltima.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    if (f && ultimaActa?.fecha) {
+      if (f < ultimaActa.fecha) {
+        const fmtSel = f.split('-').reverse().join('/');
+        const fmtUlt = ultimaActa.fecha.split('-').reverse().join('/');
         setAlerta(
           `La fecha seleccionada (${fmtSel}) es anterior a la del último acta #${ultimaActa.numeroConsecutivo} (${fmtUlt}).`
         );
@@ -66,24 +61,26 @@ export default function NuevaActa() {
     setGuardando(true);
 
     try {
-      const contadorRef = doc(db, 'contadores', 'actas');
+      // Incrementar contador de forma atómica
+      const contadorRef = ref(db, 'contadores/ultimo');
       let nuevoNumero;
 
-      await runTransaction(db, async (transaction) => {
-        const contadorSnap = await transaction.get(contadorRef);
-        nuevoNumero = (contadorSnap.exists() ? contadorSnap.data().ultimo : 0) + 1;
-        transaction.set(contadorRef, { ultimo: nuevoNumero });
+      const { snapshot } = await runTransaction(contadorRef, (actual) => {
+        nuevoNumero = (actual || 0) + 1;
+        return nuevoNumero;
+      });
+      nuevoNumero = snapshot.val();
 
-        const actaRef = doc(collection(db, 'actas'));
-        transaction.set(actaRef, {
-          numeroConsecutivo: nuevoNumero,
-          descripcion: descripcion.trim(),
-          fecha: new Date(fecha + 'T00:00:00'),
-          userId: currentUser.uid,
-          creadoPor: userProfile?.username,
-          creadoEn: serverTimestamp(),
-          bloqueada: true,
-        });
+      // Crear el acta
+      const actaRef = push(ref(db, 'actas'));
+      await set(actaRef, {
+        numeroConsecutivo: nuevoNumero,
+        descripcion: descripcion.trim(),
+        fecha,
+        userId: currentUser.uid,
+        creadoPor: userProfile?.username,
+        creadoEn: serverTimestamp(),
+        bloqueada: true,
       });
 
       await registrar(
@@ -103,7 +100,7 @@ export default function NuevaActa() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (mostrarConfirm && alerta) return; // espera confirmación
+    if (mostrarConfirm && alerta) return;
     guardarActa();
   };
 
@@ -114,6 +111,10 @@ export default function NuevaActa() {
       </div>
     );
   }
+
+  const fmtUltima = ultimaActa?.fecha
+    ? ultimaActa.fecha.split('-').reverse().join('/')
+    : null;
 
   return (
     <div className="container py-4">
@@ -134,22 +135,12 @@ export default function NuevaActa() {
                 <div className="display-6 fw-bold">{proximoNumero}</div>
                 <div className="small opacity-75">Número que se asignará a esta acta</div>
               </div>
-              <div className="ms-auto text-end">
-                {ultimaActa && (
-                  <div className="small opacity-75">
-                    <div>Último: <strong>#{ultimaActa.numeroConsecutivo}</strong></div>
-                    <div>
-                      Fecha:{' '}
-                      <strong>
-                        {(ultimaActa.fecha?.toDate
-                          ? ultimaActa.fecha.toDate()
-                          : new Date(ultimaActa.fecha + 'T00:00:00')
-                        ).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                      </strong>
-                    </div>
-                  </div>
-                )}
-              </div>
+              {ultimaActa && (
+                <div className="ms-auto text-end small opacity-75">
+                  <div>Último: <strong>#{ultimaActa.numeroConsecutivo}</strong></div>
+                  <div>Fecha: <strong>{fmtUltima}</strong></div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -157,9 +148,9 @@ export default function NuevaActa() {
           {alerta && (
             <div className="alert alert-warning border-warning shadow-sm d-flex gap-3 align-items-start">
               <i className="bi bi-exclamation-triangle-fill fs-4 text-warning mt-1 flex-shrink-0"></i>
-              <div>
+              <div className="w-100">
                 <strong>Alerta de fecha:</strong>
-                <p className="mb-2">{alerta}</p>
+                <p className="mb-2 mt-1">{alerta}</p>
                 {mostrarConfirm && (
                   <div className="d-flex gap-2">
                     <button
