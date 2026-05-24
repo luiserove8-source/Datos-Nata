@@ -1,24 +1,934 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GestorActas</title>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
-    />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script
-      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-    ></script>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GestorActas</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <style>
+    body { background: #f4f6fb; }
+    .page { display: none; }
+    .page.active { display: block; }
+    #navbar { display: none; }
+    .acta-badge { font-size: 1rem; min-width: 56px; text-align: center; }
+    .table th { font-size: .82rem; letter-spacing: .03em; }
+    .card-stat { border-left: 4px solid; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ NAVBAR ═══════════════════════════════ -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top shadow-sm" id="navbar">
+  <div class="container">
+    <a class="navbar-brand fw-bold" href="#" onclick="verPagina('dashboard')">
+      <i class="bi bi-journal-bookmark-fill me-2"></i>GestorActas
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navMenu">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+          <a class="nav-link" href="#" onclick="verPagina('dashboard')">
+            <i class="bi bi-grid me-1"></i>Inicio
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#" onclick="verPagina('nueva-acta')">
+            <i class="bi bi-plus-circle me-1"></i>Nueva Acta
+          </a>
+        </li>
+        <li class="nav-item nav-admin" style="display:none">
+          <a class="nav-link" href="#" onclick="verPagina('admin-usuarios')">
+            <i class="bi bi-people me-1"></i>Usuarios
+          </a>
+        </li>
+        <li class="nav-item nav-admin" style="display:none">
+          <a class="nav-link" href="#" onclick="verPagina('admin-auditoria')">
+            <i class="bi bi-shield-check me-1"></i>Auditoría
+          </a>
+        </li>
+      </ul>
+      <div class="d-flex align-items-center gap-2">
+        <span class="text-warning small"><i class="bi bi-person-circle me-1"></i><span id="nav-username"></span></span>
+        <button class="btn btn-outline-light btn-sm" onclick="cerrarSesion()">
+          <i class="bi bi-box-arrow-right me-1"></i>Salir
+        </button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════ LOGIN ═══════════════════════════════ -->
+<div id="pg-login" class="page active">
+  <div class="min-vh-100 d-flex align-items-center justify-content-center">
+    <div class="card shadow-lg border-0" style="width:100%;max-width:420px">
+      <div class="card-body p-5">
+        <div class="text-center mb-4">
+          <i class="bi bi-journal-bookmark-fill text-primary" style="font-size:3rem"></i>
+          <h3 class="fw-bold mt-2 text-primary">GestorActas</h3>
+          <p class="text-muted small">Sistema de Numeración Consecutiva</p>
+        </div>
+        <div id="login-error" class="alert alert-danger d-none"></div>
+        <form onsubmit="hacerLogin(event)">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Usuario</label>
+            <div class="input-group">
+              <span class="input-group-text bg-primary text-white"><i class="bi bi-person"></i></span>
+              <input type="text" id="login-user" class="form-control" placeholder="Tu nombre de usuario" required autofocus />
+            </div>
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Contraseña</label>
+            <div class="input-group">
+              <span class="input-group-text bg-primary text-white"><i class="bi bi-lock"></i></span>
+              <input type="password" id="login-pass" class="form-control" placeholder="Tu contraseña" required />
+            </div>
+          </div>
+          <button type="submit" id="login-btn" class="btn btn-primary w-100 fw-semibold">
+            <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar Sesión
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ DASHBOARD ═══════════════════════════════ -->
+<div id="pg-dashboard" class="page">
+  <div class="container py-4">
+    <div class="row g-3 mb-4">
+      <div class="col-sm-4">
+        <div class="card border-0 shadow-sm card-stat" style="border-color:#0d6efd!important">
+          <div class="card-body d-flex align-items-center gap-3">
+            <i class="bi bi-hash fs-2 text-primary"></i>
+            <div>
+              <div class="fw-bold fs-4" id="stat-ultimo">0</div>
+              <div class="text-muted small">Último número</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-4">
+        <div class="card border-0 shadow-sm card-stat" style="border-color:#198754!important">
+          <div class="card-body d-flex align-items-center gap-3">
+            <i class="bi bi-file-earmark-plus fs-2 text-success"></i>
+            <div>
+              <div class="fw-bold fs-4" id="stat-proximo">1</div>
+              <div class="text-muted small">Próximo número</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-4">
+        <div class="card border-0 shadow-sm card-stat" style="border-color:#0dcaf0!important">
+          <div class="card-body d-flex align-items-center gap-3">
+            <i class="bi bi-archive fs-2 text-info"></i>
+            <div>
+              <div class="fw-bold fs-4" id="stat-total">0</div>
+              <div class="text-muted small">Total actas</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <h5 class="fw-bold mb-0"><i class="bi bi-table me-2 text-primary"></i>Registro de Actas</h5>
+      <div class="d-flex gap-2">
+        <div class="input-group" style="width:230px">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="text" id="busqueda" class="form-control" placeholder="Buscar..." oninput="filtrarActas()" />
+        </div>
+        <button class="btn btn-primary" onclick="verPagina('nueva-acta')">
+          <i class="bi bi-plus-lg me-1"></i>Nueva Acta
+        </button>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-primary">
+            <tr>
+              <th class="ps-3"># Acta</th>
+              <th>Descripción</th>
+              <th>Fecha</th>
+              <th>Creado por</th>
+              <th>Registro</th>
+              <th>Estado</th>
+              <th class="text-end pe-3">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-actas">
+            <tr><td colspan="7" class="text-center py-4">
+              <div class="spinner-border text-primary spinner-border-sm"></div> Cargando...
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ NUEVA ACTA ═══════════════════════════════ -->
+<div id="pg-nueva-acta" class="page">
+  <div class="container py-4">
+    <div class="row justify-content-center">
+      <div class="col-lg-7">
+        <div class="d-flex align-items-center gap-2 mb-4">
+          <button class="btn btn-sm btn-outline-secondary" onclick="verPagina('dashboard')">
+            <i class="bi bi-arrow-left"></i>
+          </button>
+          <h4 class="fw-bold mb-0">Nueva Acta</h4>
+        </div>
+
+        <div class="card border-0 bg-primary text-white mb-4 shadow-sm">
+          <div class="card-body d-flex align-items-center gap-3">
+            <i class="bi bi-hash display-5 opacity-75"></i>
+            <div>
+              <div class="display-6 fw-bold" id="na-numero">—</div>
+              <div class="small opacity-75">Número que se asignará</div>
+            </div>
+            <div class="ms-auto text-end small opacity-75" id="na-ultima-info"></div>
+          </div>
+        </div>
+
+        <div id="na-alerta" class="alert alert-warning d-none">
+          <div class="d-flex gap-3 align-items-start">
+            <i class="bi bi-exclamation-triangle-fill fs-4 text-warning mt-1 flex-shrink-0"></i>
+            <div class="w-100">
+              <strong>Alerta de fecha:</strong>
+              <p class="mb-2 mt-1" id="na-alerta-texto"></p>
+              <div class="d-flex gap-2">
+                <button class="btn btn-warning btn-sm fw-semibold" onclick="confirmarActa()">
+                  <i class="bi bi-check-lg me-1"></i>Confirmar y continuar
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="limpiarFecha()">
+                  Cambiar fecha
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-4">
+            <div class="mb-4">
+              <label class="form-label fw-semibold">
+                <i class="bi bi-card-text me-1 text-primary"></i>Descripción
+              </label>
+              <textarea id="na-desc" class="form-control" rows="4"
+                placeholder="Ingresa la descripción del acta..." maxlength="1000"
+                oninput="document.getElementById('na-desc-count').textContent=this.value.length"></textarea>
+              <div class="text-end text-muted small mt-1"><span id="na-desc-count">0</span>/1000</div>
+            </div>
+            <div class="mb-4">
+              <label class="form-label fw-semibold">
+                <i class="bi bi-calendar-date me-1 text-primary"></i>Fecha del Acta
+              </label>
+              <input type="date" id="na-fecha" class="form-control" onchange="verificarFecha()" />
+            </div>
+            <div class="alert alert-info small">
+              <i class="bi bi-info-circle me-2"></i>
+              Una vez creada, el acta quedará <strong>bloqueada</strong> y no podrá modificarse.
+            </div>
+            <div class="d-flex gap-2">
+              <button id="na-btn" class="btn btn-primary flex-fill fw-semibold" onclick="guardarActa()">
+                <i class="bi bi-lock-fill me-2"></i>Crear y Bloquear Acta
+              </button>
+              <button class="btn btn-outline-secondary" onclick="verPagina('dashboard')">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ VER ACTA ═══════════════════════════════ -->
+<div id="pg-ver-acta" class="page">
+  <div class="container py-4">
+    <div class="row justify-content-center">
+      <div class="col-lg-7">
+        <div class="d-flex align-items-center gap-2 mb-4">
+          <button class="btn btn-sm btn-outline-secondary" onclick="verPagina('dashboard')">
+            <i class="bi bi-arrow-left"></i>
+          </button>
+          <h4 class="fw-bold mb-0">Detalle del Acta</h4>
+        </div>
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-primary text-white py-3 d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-3">
+              <i class="bi bi-file-earmark-text fs-3"></i>
+              <div>
+                <div class="fs-4 fw-bold" id="va-numero"></div>
+                <div class="small opacity-75">Documento oficial</div>
+              </div>
+            </div>
+            <span class="badge bg-danger fs-6"><i class="bi bi-lock-fill me-1"></i>Bloqueada</span>
+          </div>
+          <div class="card-body p-4">
+            <div class="mb-3">
+              <label class="text-muted small fw-semibold text-uppercase">Descripción</label>
+              <p class="mt-1 border rounded p-3 bg-light" id="va-desc"></p>
+            </div>
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <label class="text-muted small fw-semibold text-uppercase">Fecha del Acta</label>
+                <p class="mt-1 fw-semibold text-capitalize" id="va-fecha"></p>
+              </div>
+              <div class="col-sm-6">
+                <label class="text-muted small fw-semibold text-uppercase">Creado por</label>
+                <p class="mt-1" id="va-autor"></p>
+              </div>
+              <div class="col-sm-6">
+                <label class="text-muted small fw-semibold text-uppercase">Fecha de Registro</label>
+                <p class="mt-1" id="va-registrado"></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ ADMIN USUARIOS ═══════════════════════════════ -->
+<div id="pg-admin-usuarios" class="page">
+  <div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h4 class="fw-bold mb-0"><i class="bi bi-people me-2 text-primary"></i>Gestión de Usuarios</h4>
+      <button class="btn btn-primary" onclick="abrirModalUsuario()">
+        <i class="bi bi-person-plus me-1"></i>Nuevo Usuario
+      </button>
+    </div>
+    <div class="card border-0 shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-primary">
+            <tr>
+              <th class="ps-3">Usuario</th>
+              <th>Email</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th class="text-end pe-3">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-usuarios">
+            <tr><td colspan="5" class="text-center py-4">
+              <div class="spinner-border text-primary spinner-border-sm"></div> Cargando...
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ ADMIN AUDITORÍA ═══════════════════════════════ -->
+<div id="pg-admin-auditoria" class="page">
+  <div class="container py-4">
+    <h4 class="fw-bold mb-4"><i class="bi bi-shield-check me-2 text-primary"></i>Registro de Auditoría</h4>
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body py-2">
+        <div class="row g-2 align-items-center">
+          <div class="col-sm-auto">
+            <select id="filtro-accion" class="form-select form-select-sm" onchange="filtrarLogs()">
+              <option value="">Todas las acciones</option>
+              <option>LOGIN</option><option>LOGOUT</option>
+              <option>CREAR_ACTA</option><option>CREAR_USUARIO</option>
+              <option>TOGGLE_USUARIO</option>
+            </select>
+          </div>
+          <div class="col-sm-auto">
+            <input type="text" id="filtro-user-audit" class="form-control form-control-sm"
+              placeholder="Filtrar por usuario..." oninput="filtrarLogs()" />
+          </div>
+          <div class="col-sm-auto ms-auto">
+            <span class="badge bg-secondary" id="audit-count">0 registros</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card border-0 shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead class="table-primary">
+            <tr>
+              <th class="ps-3">Fecha y hora</th>
+              <th>Usuario</th>
+              <th>Acción</th>
+              <th>Detalle</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-auditoria">
+            <tr><td colspan="4" class="text-center py-4">
+              <div class="spinner-border text-primary spinner-border-sm"></div> Cargando...
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ MODAL NUEVO USUARIO ═══════════════════════════════ -->
+<div class="modal fade" id="modalUsuario" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Nuevo Usuario</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form onsubmit="crearUsuario(event)">
+        <div class="modal-body">
+          <div id="modal-error" class="alert alert-danger d-none"></div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre de usuario</label>
+            <input type="text" id="nu-username" class="form-control" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Correo electrónico</label>
+            <input type="email" id="nu-email" class="form-control" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Contraseña</label>
+            <input type="password" id="nu-pass" class="form-control" required minlength="6" />
+            <div class="form-text">Mínimo 6 caracteres.</div>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="nu-admin" />
+            <label class="form-check-label" for="nu-admin">Administrador</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" id="nu-btn" class="btn btn-primary">Crear Usuario</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SCRIPTS ═══════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Firebase SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<script>
+// ──────────────────────────────────────────────────────────────
+// CONFIGURACIÓN FIREBASE — rellena con tus datos
+// ──────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            "PEGA_TU_API_KEY",
+  authDomain:        "documentos-nata.firebaseapp.com",
+  databaseURL:       "https://documentos-nata-default-rtdb.firebaseio.com",
+  projectId:         "documentos-nata",
+  storageBucket:     "documentos-nata.appspot.com",
+  messagingSenderId: "PEGA_TU_SENDER_ID",
+  appId:             "PEGA_TU_APP_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.database();
+
+// App secundaria para crear usuarios sin cerrar la sesión admin
+const appSecundaria = firebase.initializeApp(firebaseConfig, 'secundaria');
+const authSec = appSecundaria.auth();
+
+// ──────────────────────────────────────────────────────────────
+// ESTADO GLOBAL
+// ──────────────────────────────────────────────────────────────
+let currentUser   = null;
+let userProfile   = null;
+let todasLasActas = [];   // cache para búsqueda
+let todosLosLogs  = [];   // cache para filtro auditoría
+let alertaActiva  = false; // controla si hay alerta de fecha pendiente
+
+// ──────────────────────────────────────────────────────────────
+// NAVEGACIÓN
+// ──────────────────────────────────────────────────────────────
+function verPagina(nombre) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const pg = document.getElementById('pg-' + nombre);
+  if (pg) pg.classList.add('active');
+
+  if (nombre === 'nueva-acta')      cargarInfoNuevaActa();
+  if (nombre === 'admin-usuarios')  cargarUsuarios();
+  if (nombre === 'admin-auditoria') cargarAuditoria();
+}
+
+// ──────────────────────────────────────────────────────────────
+// AUTH
+// ──────────────────────────────────────────────────────────────
+auth.onAuthStateChanged(async user => {
+  if (user) {
+    currentUser = user;
+    const snap = await db.ref('usuarios/' + user.uid).get();
+    if (!snap.exists()) { await auth.signOut(); return; }
+    userProfile = snap.val();
+
+    if (userProfile.activo === false) {
+      await auth.signOut();
+      mostrarErrorLogin('Tu cuenta está desactivada. Contacta al administrador.');
+      return;
+    }
+
+    document.getElementById('nav-username').textContent = userProfile.username;
+    document.getElementById('navbar').style.display = 'block';
+
+    document.querySelectorAll('.nav-admin').forEach(el => {
+      el.style.display = userProfile.isAdmin ? '' : 'none';
+    });
+
+    verPagina('dashboard');
+    escucharActas();
+  } else {
+    currentUser  = null;
+    userProfile  = null;
+    document.getElementById('navbar').style.display = 'none';
+    verPagina('login');
+  }
+});
+
+async function hacerLogin(e) {
+  e.preventDefault();
+  const username = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pass').value;
+  const btn = document.getElementById('login-btn');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Ingresando...';
+  document.getElementById('login-error').classList.add('d-none');
+
+  try {
+    const snap = await db.ref('usuarios')
+      .orderByChild('username').equalTo(username).get();
+
+    if (!snap.exists()) throw new Error('not-found');
+
+    let perfil = null;
+    snap.forEach(child => { perfil = child.val(); });
+
+    if (perfil.activo === false) {
+      mostrarErrorLogin('Tu cuenta está desactivada. Contacta al administrador.');
+      return;
+    }
+
+    await auth.signInWithEmailAndPassword(perfil.email, password);
+
+  } catch {
+    mostrarErrorLogin('Usuario o contraseña incorrectos.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-box-arrow-in-right me-2"></i>Iniciar Sesión';
+  }
+}
+
+function mostrarErrorLogin(msg) {
+  const el = document.getElementById('login-error');
+  el.textContent = msg;
+  el.classList.remove('d-none');
+}
+
+async function cerrarSesion() {
+  await registrarLog('LOGOUT', 'Cierre de sesión');
+  await auth.signOut();
+}
+
+// ──────────────────────────────────────────────────────────────
+// DASHBOARD — escucha en tiempo real
+// ──────────────────────────────────────────────────────────────
+function escucharActas() {
+  db.ref('actas').orderByChild('numeroConsecutivo').on('value', snap => {
+    const items = [];
+    snap.forEach(child => items.push({ id: child.key, ...child.val() }));
+    todasLasActas = items.reverse();
+    actualizarStats();
+    renderTablaActas(todasLasActas);
+  });
+}
+
+function actualizarStats() {
+  const ultimo   = todasLasActas.length > 0 ? todasLasActas[0].numeroConsecutivo : 0;
+  const proximo  = ultimo + 1;
+  document.getElementById('stat-ultimo').textContent  = ultimo;
+  document.getElementById('stat-proximo').textContent = proximo;
+  document.getElementById('stat-total').textContent   = todasLasActas.length;
+}
+
+function filtrarActas() {
+  const b = document.getElementById('busqueda').value.toLowerCase();
+  const filtradas = todasLasActas.filter(a =>
+    String(a.numeroConsecutivo).includes(b) ||
+    (a.descripcion || '').toLowerCase().includes(b) ||
+    (a.creadoPor   || '').toLowerCase().includes(b)
+  );
+  renderTablaActas(filtradas);
+}
+
+function renderTablaActas(lista) {
+  const tbody = document.getElementById('tabla-actas');
+  if (lista.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted">
+      <i class="bi bi-inbox fs-1 d-block mb-2"></i>No hay actas registradas.
+    </td></tr>`;
+    return;
+  }
+  tbody.innerHTML = lista.map(a => `
+    <tr>
+      <td class="ps-3"><span class="badge bg-primary acta-badge">#${a.numeroConsecutivo}</span></td>
+      <td><span style="max-width:280px;display:inline-block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        ${esc(a.descripcion)}</span></td>
+      <td>${fmtFecha(a.fecha)}</td>
+      <td><i class="bi bi-person-circle me-1 text-muted"></i>${esc(a.creadoPor)}</td>
+      <td class="text-muted small">${fmtTs(a.creadoEn)}</td>
+      <td><span class="badge bg-danger"><i class="bi bi-lock-fill me-1"></i>Bloqueada</span></td>
+      <td class="text-end pe-3">
+        <button class="btn btn-sm btn-outline-primary" onclick="verActa('${a.id}')">
+          <i class="bi bi-eye me-1"></i>Ver
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// ──────────────────────────────────────────────────────────────
+// VER ACTA
+// ──────────────────────────────────────────────────────────────
+function verActa(id) {
+  const acta = todasLasActas.find(a => a.id === id);
+  if (!acta) return;
+
+  document.getElementById('va-numero').textContent    = 'Acta #' + acta.numeroConsecutivo;
+  document.getElementById('va-desc').textContent      = acta.descripcion;
+  document.getElementById('va-autor').innerHTML       = `<i class="bi bi-person-circle me-1 text-primary"></i>${esc(acta.creadoPor)}`;
+  document.getElementById('va-fecha').textContent     = fmtFechaLarga(acta.fecha);
+  document.getElementById('va-registrado').textContent = fmtTs(acta.creadoEn);
+  verPagina('ver-acta');
+}
+
+// ──────────────────────────────────────────────────────────────
+// NUEVA ACTA
+// ──────────────────────────────────────────────────────────────
+async function cargarInfoNuevaActa() {
+  alertaActiva = false;
+  document.getElementById('na-alerta').classList.add('d-none');
+  document.getElementById('na-desc').value  = '';
+  document.getElementById('na-fecha').value = '';
+  document.getElementById('na-desc-count').textContent = '0';
+  document.getElementById('na-btn').disabled = false;
+
+  const snap = await db.ref('actas').orderByChild('numeroConsecutivo').limitToLast(1).get();
+  let ultimaActa = null;
+  if (snap.exists()) snap.forEach(c => { ultimaActa = c.val(); });
+
+  const proximo = (ultimaActa?.numeroConsecutivo ?? 0) + 1;
+  document.getElementById('na-numero').textContent = proximo;
+
+  if (ultimaActa) {
+    document.getElementById('na-ultima-info').innerHTML =
+      `Último: <strong>#${ultimaActa.numeroConsecutivo}</strong><br>Fecha: <strong>${fmtFecha(ultimaActa.fecha)}</strong>`;
+  } else {
+    document.getElementById('na-ultima-info').innerHTML = '';
+  }
+}
+
+function verificarFecha() {
+  const fecha = document.getElementById('na-fecha').value;
+  alertaActiva = false;
+  document.getElementById('na-alerta').classList.add('d-none');
+  document.getElementById('na-fecha').classList.remove('border-warning');
+  document.getElementById('na-btn').disabled = false;
+
+  if (!fecha) return;
+
+  // Comparar con la última acta cargada
+  const snap_info = document.getElementById('na-ultima-info').innerHTML;
+  const match = snap_info.match(/#(\d+)/);
+  if (!match) return;
+
+  // Buscar la última acta en el cache
+  const ultima = todasLasActas.length > 0 ? todasLasActas[0] : null;
+  if (!ultima || !ultima.fecha) return;
+
+  if (fecha < ultima.fecha) {
+    const sel = fecha.split('-').reverse().join('/');
+    const ult = ultima.fecha.split('-').reverse().join('/');
+    document.getElementById('na-alerta-texto').textContent =
+      `La fecha seleccionada (${sel}) es anterior a la del último acta #${ultima.numeroConsecutivo} (${ult}).`;
+    document.getElementById('na-alerta').classList.remove('d-none');
+    document.getElementById('na-fecha').classList.add('border-warning');
+    document.getElementById('na-btn').disabled = true;
+    alertaActiva = true;
+  }
+}
+
+function limpiarFecha() {
+  document.getElementById('na-fecha').value = '';
+  document.getElementById('na-alerta').classList.add('d-none');
+  document.getElementById('na-fecha').classList.remove('border-warning');
+  document.getElementById('na-btn').disabled = false;
+  alertaActiva = false;
+}
+
+function confirmarActa() {
+  alertaActiva = false;
+  document.getElementById('na-alerta').classList.add('d-none');
+  document.getElementById('na-btn').disabled = false;
+}
+
+async function guardarActa() {
+  const desc  = document.getElementById('na-desc').value.trim();
+  const fecha = document.getElementById('na-fecha').value;
+
+  if (!desc)  { alert('La descripción es obligatoria.'); return; }
+  if (!fecha) { alert('La fecha es obligatoria.'); return; }
+  if (alertaActiva) return;
+
+  const btn = document.getElementById('na-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+
+  try {
+    // Incrementar contador de forma atómica
+    let nuevoNumero;
+    await db.ref('contadores/ultimo').transaction(actual => {
+      nuevoNumero = (actual || 0) + 1;
+      return nuevoNumero;
+    });
+
+    // Crear acta bloqueada
+    await db.ref('actas').push({
+      numeroConsecutivo: nuevoNumero,
+      descripcion: desc,
+      fecha: fecha,
+      userId:   currentUser.uid,
+      creadoPor: userProfile.username,
+      creadoEn:  firebase.database.ServerValue.TIMESTAMP,
+      bloqueada: true
+    });
+
+    await registrarLog('CREAR_ACTA', `Acta #${nuevoNumero} creada con fecha ${fecha}`);
+    verPagina('dashboard');
+
+  } catch (e) {
+    console.error(e);
+    alert('Error al guardar. Intenta de nuevo.');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-lock-fill me-2"></i>Crear y Bloquear Acta';
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// ADMIN — USUARIOS
+// ──────────────────────────────────────────────────────────────
+function cargarUsuarios() {
+  db.ref('usuarios').orderByChild('creadoEn').on('value', snap => {
+    const items = [];
+    snap.forEach(child => items.push({ id: child.key, ...child.val() }));
+    renderTablaUsuarios(items.reverse());
+  });
+}
+
+function renderTablaUsuarios(lista) {
+  const tbody = document.getElementById('tabla-usuarios');
+  if (lista.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Sin usuarios.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = lista.map(u => {
+    const esTu = u.uid === currentUser?.uid;
+    const activo = u.activo !== false;
+    return `
+    <tr>
+      <td class="ps-3">
+        <i class="bi bi-person-circle me-2 text-muted"></i><strong>${esc(u.username)}</strong>
+        ${esTu ? '<span class="badge bg-secondary ms-2">Tú</span>' : ''}
+      </td>
+      <td class="text-muted">${esc(u.email)}</td>
+      <td>${u.isAdmin
+        ? '<span class="badge bg-warning text-dark"><i class="bi bi-shield-fill me-1"></i>Admin</span>'
+        : '<span class="badge bg-light text-dark border">Usuario</span>'}</td>
+      <td>${activo
+        ? '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Activo</span>'
+        : '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Inactivo</span>'}</td>
+      <td class="text-end pe-3">
+        <button class="btn btn-sm ${activo ? 'btn-outline-danger' : 'btn-outline-success'}"
+          onclick="toggleUsuario('${u.id}','${esc(u.username)}',${activo})"
+          ${esTu ? 'disabled' : ''}>
+          ${activo
+            ? '<i class="bi bi-ban me-1"></i>Desactivar'
+            : '<i class="bi bi-check me-1"></i>Activar'}
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function toggleUsuario(id, username, estaActivo) {
+  await db.ref('usuarios/' + id).update({ activo: !estaActivo });
+  const estado = !estaActivo ? 'activado' : 'desactivado';
+  await registrarLog('TOGGLE_USUARIO', `Usuario "${username}" ${estado}`);
+}
+
+function abrirModalUsuario() {
+  document.getElementById('nu-username').value = '';
+  document.getElementById('nu-email').value    = '';
+  document.getElementById('nu-pass').value     = '';
+  document.getElementById('nu-admin').checked  = false;
+  document.getElementById('modal-error').classList.add('d-none');
+  new bootstrap.Modal(document.getElementById('modalUsuario')).show();
+}
+
+async function crearUsuario(e) {
+  e.preventDefault();
+  const username = document.getElementById('nu-username').value.trim();
+  const email    = document.getElementById('nu-email').value.trim();
+  const pass     = document.getElementById('nu-pass').value;
+  const isAdmin  = document.getElementById('nu-admin').checked;
+  const btn      = document.getElementById('nu-btn');
+  const errEl    = document.getElementById('modal-error');
+
+  errEl.classList.add('d-none');
+  btn.disabled = true;
+  btn.textContent = 'Creando...';
+
+  try {
+    // Crear en Auth usando la app secundaria (no cierra la sesión del admin)
+    const cred = await authSec.createUserWithEmailAndPassword(email, pass);
+    await authSec.signOut();
+
+    // Guardar perfil en RTDB
+    await db.ref('usuarios/' + cred.user.uid).set({
+      uid:      cred.user.uid,
+      username: username,
+      email:    email.toLowerCase(),
+      isAdmin:  isAdmin,
+      activo:   true,
+      creadoEn: firebase.database.ServerValue.TIMESTAMP
+    });
+
+    await registrarLog('CREAR_USUARIO', `Usuario "${username}" creado`);
+    bootstrap.Modal.getInstance(document.getElementById('modalUsuario')).hide();
+
+  } catch (err) {
+    let msg = 'Error al crear el usuario.';
+    if (err.code === 'auth/email-already-in-use') msg = 'El correo ya está en uso.';
+    if (err.code === 'auth/invalid-email')        msg = 'El correo no es válido.';
+    errEl.textContent = msg;
+    errEl.classList.remove('d-none');
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Crear Usuario';
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// ADMIN — AUDITORÍA
+// ──────────────────────────────────────────────────────────────
+function cargarAuditoria() {
+  db.ref('auditoria').orderByChild('timestamp').limitToLast(500).on('value', snap => {
+    const items = [];
+    snap.forEach(child => items.push({ id: child.key, ...child.val() }));
+    todosLosLogs = items.reverse();
+    filtrarLogs();
+  });
+}
+
+function filtrarLogs() {
+  const accion = document.getElementById('filtro-accion').value;
+  const user   = document.getElementById('filtro-user-audit').value.toLowerCase();
+  const lista  = todosLosLogs.filter(l =>
+    (!accion || l.accion === accion) &&
+    (!user   || (l.username || '').toLowerCase().includes(user))
+  );
+  document.getElementById('audit-count').textContent = lista.length + ' registros';
+  renderTablaAuditoria(lista);
+}
+
+function renderTablaAuditoria(lista) {
+  const colores = { LOGIN:'success', LOGOUT:'secondary', CREAR_ACTA:'primary',
+                    CREAR_USUARIO:'info', TOGGLE_USUARIO:'warning' };
+  const iconos  = { LOGIN:'bi-box-arrow-in-right', LOGOUT:'bi-box-arrow-right',
+                    CREAR_ACTA:'bi-file-earmark-plus', CREAR_USUARIO:'bi-person-plus',
+                    TOGGLE_USUARIO:'bi-toggle-on' };
+  const tbody = document.getElementById('tabla-auditoria');
+
+  if (lista.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-5 text-muted">
+      <i class="bi bi-inbox fs-1 d-block mb-2"></i>Sin registros.
+    </td></tr>`;
+    return;
+  }
+  tbody.innerHTML = lista.map(l => {
+    const c = colores[l.accion] || 'light';
+    const i = iconos[l.accion]  || 'bi-activity';
+    const tc = (c === 'warning' || c === 'light') ? 'dark' : 'white';
+    return `
+    <tr>
+      <td class="ps-3 text-muted small">${fmtTs(l.timestamp)}</td>
+      <td><i class="bi bi-person-circle me-1 text-muted"></i>${esc(l.username || '')}</td>
+      <td><span class="badge bg-${c} text-${tc}">
+        <i class="bi ${i} me-1"></i>${l.accion}
+      </span></td>
+      <td class="text-muted small">${esc(l.detalle || '—')}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ──────────────────────────────────────────────────────────────
+// AUDITORÍA — log
+// ──────────────────────────────────────────────────────────────
+async function registrarLog(accion, detalle = '') {
+  if (!currentUser || !userProfile) return;
+  try {
+    await db.ref('auditoria').push({
+      userId:    currentUser.uid,
+      username:  userProfile.username,
+      accion,
+      detalle,
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    });
+  } catch (e) { console.error('Log error:', e); }
+}
+
+// ──────────────────────────────────────────────────────────────
+// UTILIDADES
+// ──────────────────────────────────────────────────────────────
+function fmtFecha(f) {
+  if (!f) return '—';
+  const [y, m, d] = f.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function fmtFechaLarga(f) {
+  if (!f) return '—';
+  const [y, m, d] = f.split('-');
+  return new Date(+y, +m - 1, +d).toLocaleDateString('es-CO', {
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
+  });
+}
+
+function fmtTs(ts) {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleString('es-CO', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+}
+
+function esc(str) {
+  return String(str || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
 </html>
